@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RegresiPro | Analisis Data & Bisection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+    <style>
+        :root {
+            --bg: #06060f;
+            --surface: rgba(18, 18, 40, 0.7);
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-border-hover: rgba(255, 255, 255, 0.18);
+            --text: #e8e8f0;
+            --text-secondary: #b0b0c8;
+            --accent-1: #a78bfa;
+            --accent-3: #34d399;
+            --radius: 20px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .main-container { max-width:1300px; margin:0 auto; padding:20px 28px; }
+        .card {
+            background: var(--surface);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-top: 20px;
+        }
+        .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:20px; }
+        .grid-5 { display:grid; grid-template-columns: repeat(5,1fr); gap:14px; }
+        @media(max-width:1100px){ .grid-5{grid-template-columns: repeat(3,1fr);} .grid-2{grid-template-columns:1fr;} }
+        .data-btn {
+            padding: 10px 18px; border-radius: 30px; border:1px solid var(--glass-border);
+            background:var(--glass); color:var(--text-secondary); cursor:pointer;
+        }
+        .data-btn.active { background:rgba(167,139,250,0.2); border-color:rgba(167,139,250,0.5); color:#fff; }
+        .model-card {
+            cursor:pointer; text-align:center; padding:18px; border-radius:12px;
+            background:var(--glass); border:1px solid var(--glass-border); position:relative;
+        }
+        .model-card.selected { border-color:rgba(96,165,250,0.55); background:rgba(96,165,250,0.12); }
+        .model-card.best-model {
+            border:2px solid rgba(52,211,153,0.5);
+            background:linear-gradient(145deg,rgba(52,211,153,0.2),rgba(96,165,250,0.15));
+        }
+        .model-card.invalid { opacity:0.6; cursor:not-allowed; border-style:dashed; }
+        .best-badge {
+            position:absolute; top:8px; right:10px; background:rgba(52,211,153,0.3);
+            color:#34d399; padding:2px 10px; border-radius:20px; font-size:0.65rem;
+        }
+        .table-wrapper { overflow-x:auto; border-radius:12px; border:1px solid var(--glass-border); max-height:350px; }
+        table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        th { background:rgba(18,18,40,0.95); padding:12px; }
+        td { padding:6px; text-align:center; }
+        td input {
+            width:80px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15);
+            border-radius:8px; color:#fff; font-family:'JetBrains Mono',monospace; padding:6px; text-align:center;
+        }
+        .btn { padding:12px 24px; border-radius:30px; border:none; cursor:pointer; font-weight:600; }
+        .btn-primary { background:linear-gradient(135deg, #a78bfa, #7c3aed); color:#fff; }
+        .btn-outline { background:transparent; border:1px solid var(--glass-border); color:var(--text); }
+        .chart-container { height:380px; }
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <!-- Navbar -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 28px;background:var(--surface);border-radius:50px;margin-bottom:30px;border:1px solid var(--glass-border);">
+        <div style="font-weight:700;font-size:1.2rem;">📐 Regresi<span style="color:var(--accent-1);">Pro</span></div>
+        <span style="font-size:0.8rem;color:var(--text-secondary);">Editable Data • 5 Model • Bisection</span>
+    </div>
+
+    <!-- Hero -->
+    <div style="text-align:center;">
+        <h1 style="font-size:2.4rem;font-weight:800;background:linear-gradient(135deg,#a78bfa,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Analisis Regresi & Metode Bisection</h1>
+        <p style="color:var(--text-secondary);">Ubah data langsung di tabel, lalu klik <strong>Update Data</strong></p>
+    </div>
+
+    <!-- Pilih Dataset -->
+    <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><span>📊</span><strong>Pilih Dataset</strong></div>
+        <div id="data-selector" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="data-btn active" data-dataset="1">🌱 Data 1</button>
+            <button class="data-btn" data-dataset="2">🚗 Data 2</button>
+            <button class="data-btn" data-dataset="3">☕ Data 3</button>
+            <button class="data-btn" data-dataset="4">📢 Data 4</button>
+            <button class="data-btn" data-dataset="5">🔧 Data 5</button>
+            <button class="data-btn" data-dataset="6">📱 Data 6</button>
+        </div>
+    </div>
+
+    <!-- Tabel & Grafik -->
+    <div class="grid-2">
+        <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div>
+                    <div style="font-weight:600;" id="data-name-display">📋 Data 1: Pertumbuhan Tinggi Tanaman</div>
+                    <div style="font-size:0.8rem;color:var(--text-secondary);">✏️ Klik angka untuk mengedit</div>
+                </div>
+                <button id="btn-update-data" style="padding:8px 16px;border-radius:20px;background:var(--accent-1);color:#fff;border:none;cursor:pointer;">🔄 Update Data</button>
+            </div>
+            <div class="table-wrapper" id="data-table-wrapper"></div>
+        </div>
+        <div class="card">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><span>📈</span><strong>Plot Grafik</strong></div>
+            <div class="chart-container"><canvas id="main-chart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Model Regresi -->
+    <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><span>🧠</span><strong>Model Regresi (5 Model)</strong></div>
+        <div class="grid-5" id="model-cards"></div>
+        <div id="best-model-info" style="margin-top:12px;font-size:0.8rem;color:var(--accent-3);text-align:center;"></div>
+    </div>
+
+    <!-- Bisection -->
+    <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><span>🎯</span><strong>Metode Bisection — 10 Iterasi</strong></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+            <input type="number" class="input-field" id="target-y" placeholder="Masukkan target Y..." step="any" style="padding:12px;border-radius:30px;background:var(--glass);border:1px solid var(--glass-border);color:#fff;">
+            <button class="btn btn-primary" id="btn-bisection">⚡ Jalankan Bisection</button>
+            <button class="btn btn-outline" id="btn-auto-target">🎲 Target Acak (Random Target)</button>
+        </div>
+        <div id="bisection-result"></div>
+    </div>
+
+    <!-- Error -->
+    <div class="card" id="error-section" hidden>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><span>✅</span><strong>Analisis Error</strong></div>
+        <div id="error-display" style="display:flex;gap:16px;"></div>
+        <div id="error-interpretation" style="margin-top:16px;padding:16px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);font-size:0.85rem;color:var(--text-secondary);"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ==================== DATASET ====================
+    const datasets = {
+        1: {
+            fullName: "Pertumbuhan Tinggi Tanaman",
+            xLabel: 'Hari', yLabel: 'Tinggi (cm)',
+            x: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+            y: [2,3.5,5,6.8,8.5,10,11.5,13,14.2,15.3,16.2,17,17.7,18.3,18.8,19.2,19.5,19.7,19.9,20]
+        },
+        2: {
+            fullName: "Jumlah Kendaraan Lewat Jalan",
+            xLabel: 'Jam', yLabel: 'Kendaraan',
+            x: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+            y: [20,15,10,12,25,60,120,180,150,100,80,90,110,130,160,200,220,180,140,90]
+        },
+        3: {
+            fullName: "Pendinginan Kopi",
+            xLabel: 'Menit', yLabel: 'Suhu (°C)',
+            x: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+            y: [90,85,80,75,70,66,62,58,55,52,49,47,45,43,41,39,38,37,36,35]
+        },
+        4: {
+            fullName: "Penyebaran Informasi",
+            xLabel: 'Hari', yLabel: 'Orang Tahu',
+            x: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+            y: [2,5,10,18,30,50,80,120,170,230,300,380,450,520,580,630,670,700,720,730]
+        },
+        5: {
+            fullName: "Biaya Perawatan Kendaraan",
+            xLabel: 'Tahun', yLabel: 'Biaya (Rp ribu)',
+            x: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+            y: [50,55,63,75,90,110,135,165,200,240,285,335,390,450,515,585,660,740,825,915]
+        },
+        6: {
+            fullName: "Pertumbuhan Pengguna Aplikasi",
+            xLabel: 'Hari', yLabel: 'Pengguna',
+            x: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+            y: [10,12,15,19,24,30,38,48,60,75,95,120,150,190,240,300,380,480,600,750]
+        }
+    };
+
+    let currentDataset = 1;
+    let modelResults = {};
+    let selectedModel = null;
+    let chartInstance = null;
+
+    // ==================== MATH ====================
+    const sum = arr => arr.reduce((a,b)=>a+b,0);
+    const sumProd = (a,b) => a.reduce((s,ai,i)=>s+ai*b[i],0);
+    const sumSq = a => a.reduce((s,ai)=>s+ai*ai,0);
+    const mean = arr => sum(arr)/arr.length;
+    const r2Score = (yTrue, yPred) => {
+        const yM = mean(yTrue);
+        const ssRes = yTrue.reduce((s,yi,i)=>s+(yi-yPred[i])**2,0);
+        const ssTot = yTrue.reduce((s,yi)=>s+(yi-yM)**2,0);
+        return ssTot===0 ? 1 : 1 - ssRes/ssTot;
+    };
+
+    function linReg(x,y) {
+        const n = x.length;
+        const sx=sum(x), sy=sum(y), sxy=sumProd(x,y), sx2=sumSq(x);
+        const denom = n*sx2 - sx*sx;
+        const a = denom!==0 ? (n*sxy - sx*sy)/denom : 0;
+        const b = denom!==0 ? (sy - a*sx)/n : mean(y);
+        const fn = xv => a*xv + b;
+        return {a,b,fn, r2: r2Score(y, x.map(fn)), eq:`y = ${a.toFixed(4)}x + ${b.toFixed(4)}`};
+    }
+
+    function polyReg2(x,y) {
+        const n=x.length;
+        const sx=sum(x), sy=sum(y), sx2=sumSq(x), sx3=sum(x.map(v=>v**3)), sx4=sum(x.map(v=>v**4));
+        const sxy=sumProd(x,y), sx2y=sum(x.map((v,i)=>v*v*y[i]));
+        const A=[[n,sx,sx2],[sx,sx2,sx3],[sx2,sx3,sx4]];
+        const B=[sy,sxy,sx2y];
+        const det = A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1]) - A[0][1]*(A[1][0]*A[2][2]-A[1][2]*A[2][0]) + A[0][2]*(A[1][0]*A[2][1]-A[1][1]*A[2][0]);
+        if(Math.abs(det)<1e-10) return null;
+        const inv = [
+            [(A[1][1]*A[2][2]-A[1][2]*A[2][1])/det, -(A[0][1]*A[2][2]-A[0][2]*A[2][1])/det, (A[0][1]*A[1][2]-A[0][2]*A[1][1])/det],
+            [-(A[1][0]*A[2][2]-A[1][2]*A[2][0])/det, (A[0][0]*A[2][2]-A[0][2]*A[2][0])/det, -(A[0][0]*A[1][2]-A[0][2]*A[1][0])/det],
+            [(A[1][0]*A[2][1]-A[1][1]*A[2][0])/det, -(A[0][0]*A[2][1]-A[0][1]*A[2][0])/det, (A[0][0]*A[1][1]-A[0][1]*A[1][0])/det]
+        ];
+        const c = inv[0][0]*B[0] + inv[0][1]*B[1] + inv[0][2]*B[2];
+        const b = inv[1][0]*B[0] + inv[1][1]*B[1] + inv[1][2]*B[2];
+        const a = inv[2][0]*B[0] + inv[2][1]*B[1] + inv[2][2]*B[2];
+        const fn = xv => a*xv*xv + b*xv + c;
+        return {a,b,c,fn, r2: r2Score(y, x.map(fn)), eq:`y = ${a.toFixed(4)}x² + ${b.toFixed(4)}x + ${c.toFixed(4)}`};
+    }
+
+    function computeAllModels(x,y) {
+        const res = {};
+        res.linear = linReg(x,y);
+        const poly = polyReg2(x,y);
+        res.polynomial = poly || {...res.linear, r2:0, eq:'Gagal'};
+
+        try {
+            const yPos = y.map(v=>v<=0?1e-6:v);
+            const lnY = yPos.map(Math.log);
+            const lr = linReg(x,lnY);
+            const alpha=Math.exp(lr.b), beta=lr.a;
+            if(isFinite(alpha)&&isFinite(beta)) {
+                const fn = xv => alpha*Math.exp(beta*xv);
+                res.expGrowth = {alpha,beta,fn, r2: r2Score(y,x.map(fn)), eq:`y=${alpha.toFixed(4)}·e^(${beta.toFixed(4)}x)`};
+            } else throw new Error();
+        } catch(e) { res.expGrowth = {...res.linear, r2:0, eq:'Gagal'}; }
+
+        try {
+            const cEst = Math.min(...y)*0.9;
+            const yAdj = y.map(v=>Math.max(v-cEst,1e-8));
+            const lnY = yAdj.map(Math.log);
+            const lr = linReg(x,lnY);
+            const aEst=Math.exp(lr.b), bEst=-lr.a;
+            if(isFinite(aEst)&&isFinite(bEst)&&bEst>0) {
+                const fn = xv => aEst*Math.exp(-bEst*xv) + cEst;
+                res.expDecay = {a:aEst,b:bEst,c:cEst,fn, r2: r2Score(y,x.map(fn)), eq:`y=${aEst.toFixed(4)}·e^(-${bEst.toFixed(4)}x)+${cEst.toFixed(4)}`};
+            } else throw new Error();
+        } catch(e) { res.expDecay = { invalid:true, r2:0, fn:null, eq:'Tidak cocok'}; }
+
+        try {
+            const aEst = Math.max(...y)*1.03;
+            const yRatio = y.map(v=>Math.max(1-v/aEst,1e-8));
+            const lnY = yRatio.map(Math.log);
+            const lr = linReg(x,lnY);
+            const bEst = -lr.a;
+            if(isFinite(aEst)&&isFinite(bEst)&&bEst>0) {
+                const fn = xv => aEst*(1-Math.exp(-bEst*xv));
+                res.expSaturation = {a:aEst,b:bEst,fn, r2: r2Score(y,x.map(fn)), eq:`y=${aEst.toFixed(4)}·(1-e^(-${bEst.toFixed(4)}x))`};
+            } else throw new Error();
+        } catch(e) { res.expSaturation = {...res.linear, r2:0, eq:'Gagal'}; }
+
+        return res;
+    }
+
+    // ==================== UI RENDER ====================
+    function renderEditableTable() {
+        const ds = datasets[currentDataset];
+        document.getElementById('data-name-display').innerHTML = `📋 Data ${currentDataset}: ${ds.fullName}`;
+        let html = `<table><thead><tr><th>#</th><th>${ds.xLabel}</th><th>${ds.yLabel}</th></tr></thead><tbody>`;
+        for(let i=0; i<ds.x.length; i++) {
+            html += `<tr><td>${i+1}</td>
+                <td><input type="number" class="cell-x" data-idx="${i}" value="${ds.x[i]}" step="any"></td>
+                <td><input type="number" class="cell-y" data-idx="${i}" value="${ds.y[i]}" step="any"></td></tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('data-table-wrapper').innerHTML = html;
+    }
+
+    function readDataFromTable() {
+        const xInputs = document.querySelectorAll('.cell-x');
+        const yInputs = document.querySelectorAll('.cell-y');
+        const newX = [], newY = [];
+        for(let i=0; i<xInputs.length; i++) {
+            const xv = parseFloat(xInputs[i].value);
+            const yv = parseFloat(yInputs[i].value);
+            if(!isNaN(xv) && !isNaN(yv)) { newX.push(xv); newY.push(yv); }
+        }
+        if(newX.length>0) {
+            datasets[currentDataset].x = newX;
+            datasets[currentDataset].y = newY;
+        }
+    }
+
+    function updateFromEditedData() {
+        readDataFromTable();
+        updateAll();
+    }
+
+    function updateAll() {
+        const ds = datasets[currentDataset];
+        modelResults = computeAllModels(ds.x, ds.y);
+        renderModelCards();
+        renderChart();
+        document.getElementById('bisection-result').innerHTML = '';
+        document.getElementById('error-section').hidden = true;
+    }
+
+    function renderModelCards() {
+        const icons={linear:'📏',polynomial:'📐',expGrowth:'🚀',expDecay:'📉',expSaturation:'🔄'};
+        const names={linear:'Linear',polynomial:'Polinomial',expGrowth:'Eksp. Pertumbuhan',expDecay:'Eksp. Peluruhan',expSaturation:'Eksp. Saturasi'};
+        let bestKey=null, bestR2=-Infinity;
+        for(const [key,res] of Object.entries(modelResults)) {
+            if(!res.invalid && res.r2>bestR2) { bestR2=res.r2; bestKey=key; }
+        }
+        selectedModel = bestKey;
+        let html = '';
+        for(const [key,res] of Object.entries(modelResults)) {
+            const isBest = key===bestKey && !res.invalid;
+            const isInvalid = res.invalid;
+            html += `<div class="model-card ${isBest?'best-model':''} ${selectedModel===key&&!isInvalid?'selected':''} ${isInvalid?'invalid':''}"
+                data-model="${key}" ${isInvalid?'':`onclick="window._selectModel('${key}')"`}>
+                ${isBest?'<span class="best-badge">🏆 TERBAIK</span>':''}
+                <div style="font-size:2rem;">${icons[key]}</div>
+                <div style="font-weight:600;">${names[key]}</div>
+                <div style="font-family:monospace;">R² = ${res.r2.toFixed(6)}</div>
+                ${isInvalid?'<div style="color:#f87171;">⚠️ Tidak bisa</div>':''}
+            </div>`;
+        }
+        document.getElementById('model-cards').innerHTML = html;
+        document.getElementById('best-model-info').innerHTML = bestKey ? `✅ Model terbaik: <strong>${names[bestKey]}</strong> (R² = ${bestR2.toFixed(6)})` : '';
+    }
+
+    window._selectModel = function(key) {
+        if(!modelResults[key] || modelResults[key].invalid) return;
+        selectedModel = key;
+        document.querySelectorAll('.model-card').forEach(c=>c.classList.remove('selected'));
+        document.querySelector(`.model-card[data-model="${key}"]`)?.classList.add('selected');
+        renderChart();
+        document.getElementById('bisection-result').innerHTML = '';
+        document.getElementById('error-section').hidden = true;
+    };
+
+    function renderChart() {
+        if(typeof Chart==='undefined') return;
+        const ds = datasets[currentDataset];
+        const ctx = document.getElementById('main-chart').getContext('2d');
+        if(chartInstance) chartInstance.destroy();
+
+        const datasetsForChart = [];
+
+        // Data aktual sebagai scatter (titik)
+        datasetsForChart.push({
+            label: 'Data Aktual',
+            data: ds.x.map((xv, i) => ({ x: xv, y: ds.y[i] })),
+            type: 'scatter',
+            backgroundColor: 'rgba(167, 139, 250, 0.9)',
+            borderColor: 'rgba(167, 139, 250, 1)',
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            showLine: false,
+            order: 1,
+        });
+
+        // Model sebagai garis (line) tanpa titik
+        const modelColors = {
+            linear: '#60a5fa',
+            polynomial: '#fbbf24',
+            expGrowth: '#f472b6',
+            expDecay: '#34d399',
+            expSaturation: '#a78bfa'
+        };
+
+        for (const [key, res] of Object.entries(modelResults)) {
+            if (!res.fn || res.invalid) continue;
+            const xMin = Math.min(...ds.x);
+            const xMax = Math.max(...ds.x);
+            const xSmooth = [];
+            for (let xv = xMin; xv <= xMax; xv += (xMax - xMin) / 200) {
+                xSmooth.push(xv);
+            }
+            const ySmooth = xSmooth.map(xv => res.fn(xv));
+            datasetsForChart.push({
+                label: key,
+                data: xSmooth.map((xv, i) => ({ x: xv, y: ySmooth[i] })),
+                type: 'line',
+                borderColor: modelColors[key] || '#ffffff',
+                backgroundColor: 'transparent',
+                borderWidth: key === selectedModel ? 3 : 1.5,
+                borderDash: key === selectedModel ? [] : [6, 3],
+                pointRadius: 0,
+                tension: 0.4,
+                fill: false,
+                order: 2,
+            });
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'scatter', // default type
+            data: { datasets: datasetsForChart },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#b0b0c8',
+                            usePointStyle: true,
+                            pointStyleWidth: 10,
+                        }
+                    },
+                    tooltip: {
+                        mode: 'nearest',
+                        intersect: false,
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: ds.xLabel, color: '#b0b0c8' },
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: { color: '#7878a0' }
+                    },
+                    y: {
+                        title: { display: true, text: ds.yLabel, color: '#b0b0c8' },
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: { color: '#7878a0' }
+                    }
+                }
+            }
+        });
+    }
+
+    // ==================== BISECTION ====================
+    function runBisection() {
+        if(!selectedModel || !modelResults[selectedModel] || modelResults[selectedModel].invalid) { alert('Pilih model valid!'); return; }
+        const target = parseFloat(document.getElementById('target-y').value);
+        if(isNaN(target)) { alert('Masukkan target Y'); return; }
+        const fn = modelResults[selectedModel].fn;
+        const ds = datasets[currentDataset];
+        const g = x => fn(x) - target;
+        let a = Math.min(...ds.x)-2, b = Math.max(...ds.x)+5;
+        if(g(a)*g(b)>0) {
+            for(let i=2;i<30;i+=2) {
+                if(g(a-i)*g(b)<=0) { a-=i; break; }
+                if(g(a)*g(b+i)<=0) { b+=i; break; }
+            }
+        }
+        if(g(a)*g(b)>0) {
+            document.getElementById('bisection-result').innerHTML = '<div style="color:#f87171;">Tidak dapat menemukan interval yang mengapit akar.</div>';
+            return;
+        }
+        const iters = [];
+        for(let i=0;i<10;i++) {
+            const c = (a+b)/2;
+            const gc = g(c);
+            iters.push({a,b,c,ga:g(a),gb:g(b),gc,width:Math.abs(b-a)});
+            if(g(a)*gc<0) b=c; else a=c;
+        }
+        const finalC = (a+b)/2;
+        const absErr = Math.abs(b-a)/2;
+        const relErr = Math.abs(finalC)>1e-10 ? (absErr/Math.abs(finalC))*100 : 0;
+
+        let tableRows = '';
+        iters.forEach((r,idx) => {
+            tableRows += `<tr><td>${idx+1}</td><td>${r.a.toFixed(6)}</td><td>${r.b.toFixed(6)}</td><td><strong>${r.c.toFixed(6)}</strong></td><td>${r.gc.toFixed(8)}</td><td>${r.width.toFixed(6)}</td></tr>`;
+        });
+
+        document.getElementById('bisection-result').innerHTML = `
+            <p style="color:var(--accent-3);">✅ <strong>${ds.xLabel} ≈ ${finalC.toFixed(6)}</strong> untuk target ${ds.yLabel} = ${target}</p>
+            <div class="table-wrapper"><table><thead><tr><th>Iter</th><th>a</th><th>b</th><th>c</th><th>g(c)</th><th>|b-a|</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+
+        document.getElementById('error-section').hidden = false;
+        document.getElementById('error-display').innerHTML = `
+            <div style="flex:1;padding:16px;background:var(--glass);border-radius:12px;"><div style="font-size:1.2rem;color:var(--accent-1);">${absErr.toFixed(8)}</div><small>Error Absolut</small></div>
+            <div style="flex:1;padding:16px;background:var(--glass);border-radius:12px;"><div style="font-size:1.2rem;color:var(--accent-1);">${relErr.toFixed(6)}%</div><small>Error Relatif</small></div>`;
+        document.getElementById('error-interpretation').innerText = `Interpretasi: Setelah 10 iterasi, error absolut ${absErr.toFixed(6)} ${ds.xLabel}. Error relatif ${relErr.toFixed(4)}% menunjukkan akurasi sangat baik untuk estimasi ${ds.xLabel.toLowerCase()} pada kasus ${ds.fullName.toLowerCase()}.`;
+    }
+
+    // ==================== EVENT LISTENERS ====================
+    document.getElementById('data-selector').addEventListener('click', e => {
+        const btn = e.target.closest('.data-btn');
+        if(!btn) return;
+        const dsNum = parseInt(btn.dataset.dataset);
+        if(dsNum && dsNum!==currentDataset) {
+            currentDataset = dsNum;
+            document.querySelectorAll('.data-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            renderEditableTable();
+            updateAll();
+        }
+    });
+
+    document.getElementById('btn-update-data').addEventListener('click', updateFromEditedData);
+    document.getElementById('btn-bisection').addEventListener('click', runBisection);
+
+    // ==================== TARGET ACAK PENUH ====================
+    document.getElementById('btn-auto-target').addEventListener('click', () => {
+        const ds = datasets[currentDataset];
+        const yMin = Math.min(...ds.y);
+        const yMax = Math.max(...ds.y);
+        // Acak di seluruh rentang y (min hingga max)
+        const randomY = yMin + Math.random() * (yMax - yMin);
+        document.getElementById('target-y').value = randomY.toFixed(2);
+    });
+
+    document.getElementById('target-y').addEventListener('keydown', e => { if(e.key==='Enter') runBisection(); });
+
+    // Init
+    renderEditableTable();
+    updateAll();
+    // Set target awal secara acak juga
+    const dsInit = datasets[1];
+    const randInit = Math.min(...dsInit.y) + Math.random() * (Math.max(...dsInit.y) - Math.min(...dsInit.y));
+    document.getElementById('target-y').value = randInit.toFixed(2);
+})();
+</script>
+</body>
+</html>
